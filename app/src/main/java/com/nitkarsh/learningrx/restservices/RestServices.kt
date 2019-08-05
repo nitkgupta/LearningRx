@@ -9,7 +9,7 @@ import retrofit2.http.Query
 interface RestServices {
 
     @GET("/users/{userName}/repos")
-    fun getRepos(@Path(value = "userName") userName: String) : Call<Model>
+    fun getRepos(@Path(value = "userName") userName: String) : Call<List<Model>>
 
     @GET("/search/users")
     fun searchUsers(@Query("q") text: String, @Query("page") page: Int) : Call<Model>
