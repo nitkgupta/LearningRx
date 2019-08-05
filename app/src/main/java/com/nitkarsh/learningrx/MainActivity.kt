@@ -9,21 +9,25 @@ import io.reactivex.Observable
 import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
+import io.reactivex.functions.BiFunction
 import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import java.util.concurrent.Callable
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var call: Call<List<Model>>
+    lateinit var call1: Call<List<Model>>
+    lateinit var call2: Call<List<Model>>
     var list = arrayListOf<Model>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         getSomeWorkDone()
-        call = RestClient.getApiService().getRepos(userName = "nitkgupta")
+        call1 = RestClient.getApiService().getRepos(userName = "nitkgupta")
+        call2 = RestClient.getApiService().getRepos(userName = "nitkgupta")
         getSomeWorkDoneCallable()
+        getSomeWorkDoneAgain()
     }
 
     fun getObservable(): Observable<String> {
@@ -65,10 +69,10 @@ class MainActivity : AppCompatActivity() {
     private fun getObservableCallable(): Observable<List<Model>>? {
         return Observable.fromCallable(object : Callable<List<Model>> {
             override fun call(): List<Model> {
-                if (call.isExecuted || call.isCanceled) {
-                    return call.clone().execute().body()!!
+                if (call1.isExecuted || call1.isCanceled) {
+                    return call1.clone().execute().body()!!
                 } else {
-                    return call.execute().body()!!
+                    return call1.execute().body()!!
                 }
             }
         })
@@ -102,5 +106,32 @@ class MainActivity : AppCompatActivity() {
             Log.e("List_size", list.size.toString())
             list
         }?.subscribe(getObserverCallable())
+    }
+
+    /**
+     * Observable fir fetching user info
+     */
+     fun getObservable3WithApi(): Observable<List<Model>> {
+        return Observable.fromCallable(object: Callable<List<Model>> {
+            override fun call(): List<Model> {
+                return if (call2.isExecuted || call2.isCanceled) call2.clone().execute().body()!! else call2.execute().body()!!
+            }
+        })
+    }
+
+    /**
+     * Zip operator. It combines the result from two and combines to perform some operation and return the result
+     */
+    private fun getSomeWorkDoneAgain() {
+        Observable.zip(getObservableCallable(),getObservable3WithApi(),object: BiFunction<List<Model>,List<Model>,List<Model>> {
+            override fun apply(t1: List<Model>, t2: List<Model>): List<Model> {
+                return arrayListOf<Model>().apply {
+                    addAll(t1)
+                    addAll(t2)
+                }
+            }
+        }).subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(getObserverCallable())
     }
 }
