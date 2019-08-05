@@ -6,10 +6,12 @@ import androidx.appcompat.app.AppCompatActivity
 import com.nitkarsh.learningrx.restservices.Model
 import com.nitkarsh.learningrx.restservices.RestClient
 import io.reactivex.Observable
+import io.reactivex.ObservableSource
 import io.reactivex.Observer
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
 import io.reactivex.functions.BiFunction
+import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import retrofit2.Call
 import java.util.concurrent.Callable
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         call2 = RestClient.getApiService().getRepos(userName = "nitkgupta")
         getSomeWorkDoneCallable()
         getSomeWorkDoneAgain()
+        getSomeWorkDoneFlatMap()
     }
 
     fun getObservable(): Observable<String> {
@@ -78,7 +81,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun getObserverCallable(): Observer<List<Model>> {
+    private fun getObserverCallable(from: String): Observer<List<Model>> {
         return object : Observer<List<Model>> {
             override fun onComplete() {
                 Log.e("OnComplete Callable", "You are finished callable")
@@ -88,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onNext(t: List<Model>) {
-                Log.e("Callable Complete", t.toString())
+                Log.e("Callable Complete","${t} from ---> $from")
             }
 
             override fun onError(e: Throwable) {
@@ -98,6 +101,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * @see Observable.map
      * this will call the observable with mapping
      */
     private fun getSomeWorkDoneCallable() {
@@ -105,7 +109,7 @@ class MainActivity : AppCompatActivity() {
             list.addAll(it)
             Log.e("List_size", list.size.toString())
             list
-        }?.subscribe(getObserverCallable())
+        }?.subscribe(getObserverCallable("Observable.Map"))
     }
 
     /**
@@ -120,6 +124,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
+     * @see Observable.zip
      * Zip operator. It combines the result from two and combines to perform some operation and return the result
      */
     private fun getSomeWorkDoneAgain() {
@@ -132,6 +137,24 @@ class MainActivity : AppCompatActivity() {
             }
         }).subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(getObserverCallable())
+            .subscribe(getObserverCallable("Observable.zip"))
     }
+
+    /**
+     * @see flatMap
+     * This takes the observable, convert it into single observables.
+     * For any modification you can do in that and emit only those values that are eligible for you.
+     */
+    private fun getSomeWorkDoneFlatMap() {
+        getObservableCallable()?.flatMap(object: Function<List<Model>, ObservableSource<List<Model>>> {
+            override fun apply(t: List<Model>): ObservableSource<List<Model>> {
+                return Observable.fromArray(t)
+            }
+        })?.subscribeOn(Schedulers.io())?.observeOn(AndroidSchedulers.mainThread())?.map {
+            list.addAll(it)
+            Log.e("List_size", list.size.toString())
+            list
+        }?.subscribe(getObserverCallable("Observable.FlatMap"))
+    }
+
 }
