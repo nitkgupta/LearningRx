@@ -13,6 +13,8 @@ import io.reactivex.disposables.Disposable
 import io.reactivex.functions.BiFunction
 import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
+import io.reactivex.subjects.PublishSubject
+import io.reactivex.subjects.ReplaySubject
 import retrofit2.Call
 import java.util.concurrent.Callable
 
@@ -31,6 +33,8 @@ class MainActivity : AppCompatActivity() {
         getSomeWorkDoneCallable()
         getSomeWorkDoneAgain()
         getSomeWorkDoneFlatMap()
+        publishSubject()
+        replaySubject()
     }
 
     fun getObservable(): Observable<String> {
@@ -44,19 +48,19 @@ class MainActivity : AppCompatActivity() {
         return object : Observer<String> {
 
             override fun onSubscribe(d: Disposable) {
-
+                Log.e("ONSUBSCRIBE_FIRST", d.isDisposed.toString())
             }
 
             override fun onNext(value: String) {
-                Log.e("VALUE_OBSERVER", value)
+                Log.e("VALUE_OBSERVER_FIRST", value)
             }
 
             override fun onError(e: Throwable) {
-
+                Log.e("ONERROR_FIRST",e.localizedMessage)
             }
 
             override fun onComplete() {
-                println("onComplete")
+                println("onComplete FIRST")
             }
         }
     }
@@ -115,7 +119,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * Observable fir fetching user info
      */
-     fun getObservable3WithApi(): Observable<List<Model>> {
+    private fun getObservable3WithApi(): Observable<List<Model>> {
         return Observable.fromCallable(object: Callable<List<Model>> {
             override fun call(): List<Model> {
                 return if (call2.isExecuted || call2.isCanceled) call2.clone().execute().body()!! else call2.execute().body()!!
@@ -156,5 +160,63 @@ class MainActivity : AppCompatActivity() {
             list
         }?.subscribe(getObserverCallable("Observable.FlatMap"))
     }
+
+    private fun getObserver2TypeString(type: String): Observer<String> {
+        return object : Observer<String> {
+
+            override fun onSubscribe(d: Disposable) {
+                Log.e("ONSUBSCRIBE_SECOND $type", d.isDisposed.toString())
+            }
+
+            override fun onNext(value: String) {
+                Log.e("VALUE_OBSERVER_SECOND $type", value)
+            }
+
+            override fun onError(e: Throwable) {
+                Log.e("ONERROR_SECOND $type",e.localizedMessage)
+            }
+
+            override fun onComplete() {
+                println("onComplete_SECOND $type")
+            }
+        }
+    }
+
+    //--------------------SUBJECT------------------------//
+
+    /**
+     * @see PublishSubject
+     * It can act add observer at any given time.
+     * Like some observer can start observing after 5 sec from current data.
+     * It emits subsequent data of the Observable Source at the time of subscription
+     */
+    private fun publishSubject() {
+        val publishSubject : PublishSubject<String> = PublishSubject.create()
+        publishSubject.subscribe(getObserver())
+        publishSubject.onNext("Nitkarsh")
+        publishSubject.onNext("Gupta")
+        publishSubject.onNext("Finally")
+        publishSubject.subscribe(getObserver2TypeString("publishSubject")) // this will receive item emitted after this point only
+        publishSubject.onNext("Hello brooo")
+        publishSubject.onComplete()
+    }
+
+    /**
+     * @see ReplaySubject
+     * It can also add observer at any time
+     * It differs from PublishSubject in the way that observer will get all items emitted
+     * even the items that were emitted before observer is added
+     */
+    private fun replaySubject() {
+        var replaySubject: ReplaySubject<String> = ReplaySubject.create()
+        replaySubject.subscribe(getObserver())
+        replaySubject.onNext("Nitkarsh")
+        replaySubject.onNext("Gupta")
+        replaySubject.onNext("Finally")
+        replaySubject.subscribe(getObserver2TypeString("replaySubject")) // this will receive every item emitted that may be emitted before this point
+        replaySubject.onNext("Hello brooo")
+        replaySubject.onComplete()
+    }
+
 
 }
